@@ -10,11 +10,12 @@ from notebook.base.handlers import (
     IPythonHandler, APIHandler, json_errors, path_regex
 )
 from notebook.utils import url_path_join
-from tornado import gen, web, escape
+from tornado import gen, web, escape, iostream
 
 # TODO: need a way to configure external url?
 # TODO: the API is very UI oriented and should probably be changed
 # TODO: we should clean up out dated tokens some time
+
 
 class TokenManager(object):
     """stores tokens plus additional information
@@ -164,6 +165,7 @@ class DownloadHandler(IPythonHandler):
         ospath = os.path.join(
             self.contents_manager._get_os_path(path),
         )
+        stat_result = os.stat(ospath)
         # TODO: could also do some progress tracking here ....
         #       e.g. set up progress handler for file / token combo
         #            token can't be used twice at the same time? (should we support range headers?)
@@ -176,15 +178,33 @@ class DownloadHandler(IPythonHandler):
 
         # size = os.stat(dest)[stat.ST_SIZE]
         # self.set_header('Content-Length', size)
+        # TODO: filename="ASCII only" .. use filename* https://tools.ietf.org/html/rfc6266 for more
+        self.set_header("Content-Type", "application/octet-stream")
+        self.set_header("Content-Length", stat_result[stat.ST_SIZE])
         self.set_header('Content-Disposition', 'attachment; filename="{}"'.format(escape.url_escape(os.path.basename(ospath))))
         chunk_size = 64 * 1024
         with open(ospath, 'rb') as file:
-            chunk = file.read(chunk_size)
-            while chunk:
-                # TODO: update progress here somewhere?
-                self.write(chunk)
-                yield self.flush()
+            while True:
                 chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+                try:
+                    # TODO: update progress here somewhere?
+                    self.write(chunk)
+                    yield self.flush()
+                except iostream.StreamClosedError:
+                    # this means the client has closed the connection
+                    # so break the loop
+                    break
+                finally:
+                    # deleting the chunk is very important because
+                    # if many clients are downloading files at the
+                    # same time, the chunks in memory will keep
+                    # increasing and will eat up the RAM
+                    del chunk
+                    # pause the coroutine so other handlers can run
+                    # yield gen.sleep(0.000000001)  # 1 nanosecond
+                    # yield None  # run ioloop for one iteration
         # remove token after successful download
         token = self.get_argument('dltoken')
         del TOKENS[token]
