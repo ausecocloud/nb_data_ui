@@ -13,4 +13,6 @@ setuptools.setup(
     ],
     #long_description=open('README.md').read(),
     packages=setuptools.find_packages(),
+    # need that so that pip install js respects MANIFEST.in
+    include_package_data=True,
 )
