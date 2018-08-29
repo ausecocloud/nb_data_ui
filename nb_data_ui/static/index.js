@@ -54,8 +54,8 @@ function(Jupyter,
 
 
     // Instantiate main objects
-    var imports = new import_service.ImportService()
-    var tempurls = new tempurl_service.TempUrlService()
+    var imports = new import_service.ImportService(common_options)
+    var tempurls = new tempurl_service.TempUrlService(common_options)
     var remotes = {
         // TODO: pass on config? common_options?
         dropbox: new dropbox.DropBox(common_options),
