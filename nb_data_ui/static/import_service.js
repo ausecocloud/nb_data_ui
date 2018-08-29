@@ -15,7 +15,7 @@ define(["base/js/utils"], function(utils) {
     var ImportService = function(options) {
         options = options || {}
         // notebook server prefix
-        this.base_url = options.base_url || ""
+        this.base_url = options.base_url || "/"
     }
 
     ImportService.prototype.api_url = function() {
