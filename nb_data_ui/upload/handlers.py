@@ -135,6 +135,8 @@ class URLFetchHandler(APIHandler):
             'error': False
         }
 
+        # collect finished downloads
+        done = []
         for key in dl_state:
             if os.path.dirname(key) != ospath:
                 # file in other folder ... skip it
@@ -149,6 +151,10 @@ class URLFetchHandler(APIHandler):
                 'progress': dl_state[key]['progress'],
                 'state': dl_state[key]['state']
             }
+            if dl_state[key]['state'] in (SUCCESS, FAILED):
+                done.append(key)
+        for key in done:
+            del dl_state[key]
         self.finish(json.dumps(result))
 
     @run_on_executor
